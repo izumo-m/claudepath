@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 from claudepath.backup import create_backup, get_backup_base, restore_backup
 from claudepath.encoder import encode_path
 from claudepath.scanner import find_claude_dir, find_project_dir
-from claudepath.updaters import merge_sessions_index, update_history, update_jsonl_files, update_sessions_index
+from claudepath.updaters import merge_sessions_index, update_history, update_jsonl_files, update_sessions_index, update_usage_data
 
 
 class MoveError(Exception):
@@ -28,6 +28,7 @@ class MoveResult:
         self.jsonl_files_updated = 0
         self.jsonl_lines_changed = 0
         self.history_lines_changed = 0
+        self.usage_data_updated = 0
         self.backup_path: Optional[Path] = None
         self.dry_run = False
 
@@ -50,6 +51,10 @@ class MoveResult:
         if self.history_lines_changed:
             lines.append(
                 f"{prefix}updated {self.history_lines_changed} line(s) in history.jsonl"
+            )
+        if self.usage_data_updated:
+            lines.append(
+                f"{prefix}updated {self.usage_data_updated} usage-data file(s)"
             )
         if self.backup_path:
             lines.append(f"backup saved to: {self.backup_path}")
@@ -165,10 +170,12 @@ def _prepare_operation(
         else:
             print("  Project not found in Claude data", file=sys.stderr)
 
-    if project_dir and not dry_run and not no_backup:
+    if not dry_run and not no_backup:
         backup_base = get_backup_base(claude_dir)
         extra_dir = new_project_dir if (merge and new_project_dir.exists()) else None
-        result.backup_path = create_backup(project_dir, history_path, backup_base, extra_dir=extra_dir)
+        result.backup_path = create_backup(
+            project_dir, history_path, backup_base, extra_dir=extra_dir, old_path=old_path
+        )
         if verbose:
             print(f"  Backup created: {result.backup_path}", file=sys.stderr)
 
@@ -332,7 +339,9 @@ def _update_data_files(
     result: MoveResult,
     verbose: bool = False,
 ) -> None:
-    """Update sessions-index.json, .jsonl files, and history.jsonl."""
+    """Update sessions-index.json, .jsonl files, history.jsonl, and usage-data."""
+    claude_dir = history_path.parent
+
     if project_dir and project_dir.exists():
         index_path = project_dir / "sessions-index.json"
         result.sessions_index_updated = update_sessions_index(
@@ -347,4 +356,8 @@ def _update_data_files(
 
     result.history_lines_changed = update_history(
         history_path, old_path, new_path, dry_run=dry_run, verbose=verbose
+    )
+
+    result.usage_data_updated = update_usage_data(
+        claude_dir, old_path, new_path, dry_run=dry_run, verbose=verbose
     )

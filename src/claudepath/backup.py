@@ -7,6 +7,7 @@ If any step fails, the backup can be restored automatically.
 Backups are stored in: ~/.claude/backups/claudepath/{timestamp}/
 """
 
+import json
 import os
 import shutil
 from datetime import datetime
@@ -15,18 +16,20 @@ from typing import Dict, List, Optional
 
 
 def create_backup(
-    project_dir: Path,
+    project_dir: Optional[Path],
     history_path: Path,
     backup_base: Path,
     extra_dir: Optional[Path] = None,
+    old_path: Optional[str] = None,
 ) -> Path:
-    """Create a backup of the project directory and history.jsonl.
+    """Create a backup of the project directory, history.jsonl, and usage-data.
 
     Args:
         project_dir: The ~/.claude/projects/{encoded}/ directory to back up.
         history_path: The ~/.claude/history.jsonl file to back up.
         backup_base: Base directory for backups (~/.claude/backups/claudepath/).
         extra_dir: Optional second project dir to back up (used during --merge).
+        old_path: Original project path, used to identify usage-data files to back up.
 
     Returns:
         Path to the created backup directory.
@@ -36,7 +39,7 @@ def create_backup(
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     # Back up the source project directory
-    if project_dir.exists():
+    if project_dir and project_dir.exists():
         dest = backup_dir / "project_dir"
         shutil.copytree(str(project_dir), str(dest))
 
@@ -49,9 +52,14 @@ def create_backup(
     if history_path.exists():
         shutil.copy2(str(history_path), str(backup_dir / "history.jsonl"))
 
+    # Back up usage-data session-meta files that match the old project path
+    claude_dir = history_path.parent
+    if old_path:
+        _backup_usage_data(claude_dir, old_path, backup_dir)
+
     # Write a manifest so restore knows what to put back where
     manifest_lines = [
-        f"project_dir={project_dir}",
+        f"project_dir={project_dir or ''}",
         f"history_path={history_path}",
     ]
     if extra_dir is not None:
@@ -60,6 +68,26 @@ def create_backup(
     manifest.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
 
     return backup_dir
+
+
+def _backup_usage_data(claude_dir: Path, old_path: str, backup_dir: Path) -> None:
+    """Back up usage-data/session-meta files whose project_path matches old_path."""
+    meta_dir = claude_dir / "usage-data" / "session-meta"
+    if not meta_dir.exists():
+        return
+
+    backup_meta_dir = None
+    for json_file in meta_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        pp = data.get("project_path", "")
+        if pp == old_path or pp.startswith(old_path + "/"):
+            if backup_meta_dir is None:
+                backup_meta_dir = backup_dir / "usage-data" / "session-meta"
+                backup_meta_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(json_file), str(backup_meta_dir / json_file.name))
 
 
 def restore_backup(backup_dir: Path) -> bool:
@@ -101,6 +129,18 @@ def restore_backup(backup_dir: Path) -> bool:
             shutil.copy2(str(backup_history), str(history_path))
         except OSError:
             success = False
+
+    # Restore usage-data session-meta files
+    backup_meta = backup_dir / "usage-data" / "session-meta"
+    if backup_meta.exists() and history_path:
+        claude_dir = Path(config.get("history_path", "")).parent
+        meta_dir = claude_dir / "usage-data" / "session-meta"
+        if meta_dir.exists():
+            for json_file in backup_meta.glob("*.json"):
+                try:
+                    shutil.copy2(str(json_file), str(meta_dir / json_file.name))
+                except OSError:
+                    success = False
 
     return success
 

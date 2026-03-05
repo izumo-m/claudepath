@@ -15,6 +15,42 @@ from typing import Tuple
 from claudepath.encoder import encode_path
 
 
+def update_usage_data(
+    claude_dir: Path,
+    old_path: str,
+    new_path: str,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> int:
+    """Update project_path in usage-data/session-meta/*.json files.
+
+    Returns the number of files updated.
+    """
+    meta_dir = claude_dir / "usage-data" / "session-meta"
+    if not meta_dir.exists():
+        return 0
+
+    files_updated = 0
+    for json_file in meta_dir.glob("*.json"):
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        pp = data.get("project_path", "")
+        if pp == old_path or pp.startswith(old_path + "/"):
+            data["project_path"] = new_path + pp[len(old_path):]
+            files_updated += 1
+            if verbose:
+                print(f"    {json_file.name}: updated project_path", file=sys.stderr)
+            if not dry_run:
+                json_file.write_text(
+                    json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8"
+                )
+
+    return files_updated
+
+
 def update_sessions_index(
     index_path: Path,
     old_path: str,

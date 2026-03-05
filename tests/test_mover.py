@@ -76,6 +76,20 @@ def make_test_env(tmp_path: Path):
         + json.dumps({"display": "other", "project": "/other/path", "timestamp": 1001}) + "\n"
     )
 
+    # usage-data/session-meta
+    meta_dir = claude_dir / "usage-data" / "session-meta"
+    meta_dir.mkdir(parents=True)
+    (meta_dir / "sess-001.json").write_text(json.dumps({
+        "session_id": "sess-001",
+        "project_path": old_abs,
+        "input_tokens": 100,
+    }, indent=4))
+    (meta_dir / "sess-other.json").write_text(json.dumps({
+        "session_id": "sess-other",
+        "project_path": "/other/path",
+        "input_tokens": 50,
+    }, indent=4))
+
     return old_project, projects_root, claude_dir
 
 
@@ -158,6 +172,21 @@ def test_move_project_updates_history(tmp_path):
     assert history_lines[1]["project"] == "/other/path"  # untouched
 
 
+def test_move_project_updates_usage_data(tmp_path):
+    old_project, projects_root, claude_dir = make_test_env(tmp_path)
+    new_project = projects_root / NEW_PATH_NAME
+
+    move_project(str(old_project), str(new_project), claude_dir=claude_dir, no_backup=True)
+
+    meta_dir = claude_dir / "usage-data" / "session-meta"
+    d1 = json.loads((meta_dir / "sess-001.json").read_text())
+    assert d1["project_path"] == str(new_project)
+
+    # Unrelated session-meta should be untouched
+    d_other = json.loads((meta_dir / "sess-other.json").read_text())
+    assert d_other["project_path"] == "/other/path"
+
+
 def test_move_project_dry_run_no_changes(tmp_path):
     old_project, projects_root, claude_dir = make_test_env(tmp_path)
     new_project = projects_root / NEW_PATH_NAME
@@ -167,6 +196,7 @@ def test_move_project_dry_run_no_changes(tmp_path):
     original_index = (claude_dir / "projects" / old_encoded / "sessions-index.json").read_text()
     original_session = (claude_dir / "projects" / old_encoded / "sess-001.jsonl").read_text()
     original_history = (claude_dir / "history.jsonl").read_text()
+    original_usage = (claude_dir / "usage-data" / "session-meta" / "sess-001.json").read_text()
 
     move_project(
         str(old_project), str(new_project), claude_dir=claude_dir, dry_run=True, no_backup=True
@@ -178,6 +208,7 @@ def test_move_project_dry_run_no_changes(tmp_path):
     assert (claude_dir / "projects" / old_encoded).exists()
     assert (claude_dir / "projects" / old_encoded / "sessions-index.json").read_text() == original_index
     assert (claude_dir / "projects" / old_encoded / "sess-001.jsonl").read_text() == original_session
+    assert (claude_dir / "usage-data" / "session-meta" / "sess-001.json").read_text() == original_usage
     assert (claude_dir / "history.jsonl").read_text() == original_history
 
 

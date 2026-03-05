@@ -116,6 +116,7 @@ claudepath mv --help
 | `{session}.jsonl` files | `cwd` and file path references updated (line-by-line, handles large files) |
 | Subagent `.jsonl` files | Same as above, recursive |
 | `~/.claude/history.jsonl` | `project` field updated for all matching entries |
+| `usage-data/session-meta/*.json` | `project_path` updated (token usage & analytics) |
 
 > **Note:** `file-history/`, `todos/`, `tasks/`, and `shell-snapshots/` are keyed by session UUID, not by project path — they don't need updating.
 
@@ -148,6 +149,7 @@ By default, claudepath creates a backup before making any changes:
 The backup includes:
 - The full project data directory (`~/.claude/projects/{encoded}/`)
 - `~/.claude/history.jsonl`
+- Affected `usage-data/session-meta/*.json` files (token usage & analytics)
 - When using `--merge`: both the source and destination project directories
 
 If any step fails, claudepath automatically restores from the backup. Use `--no-backup` only if you already have your own backup or want to skip the extra time.

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from claudepath.updaters import update_history, update_jsonl_files, update_sessions_index
+from claudepath.updaters import update_history, update_jsonl_files, update_sessions_index, update_usage_data
 
 
 OLD_PATH = "/Users/foo/old-project"
@@ -297,3 +297,64 @@ def test_merge_duplicate_session_id_warning(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "duplicate" in captured.err.lower() or "skipping" in captured.err.lower()
     assert session_id in captured.err
+
+
+# ─── usage-data/session-meta ─────────────────────────────────────────────
+
+
+def make_usage_data(claude_dir: Path, project_path: str, session_id: str = "sess-001") -> Path:
+    meta_dir = claude_dir / "usage-data" / "session-meta"
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    data = {
+        "session_id": session_id,
+        "project_path": project_path,
+        "start_time": "2026-01-01T00:00:00.000Z",
+        "duration_minutes": 60,
+        "input_tokens": 100,
+        "output_tokens": 200,
+    }
+    f = meta_dir / f"{session_id}.json"
+    f.write_text(json.dumps(data, indent=4))
+    return f
+
+
+def test_update_usage_data_updates_matching_files(tmp_path):
+    make_usage_data(tmp_path, OLD_PATH, "sess-001")
+    make_usage_data(tmp_path, OLD_PATH, "sess-002")
+    make_usage_data(tmp_path, "/other/project", "sess-003")
+
+    count = update_usage_data(tmp_path, OLD_PATH, NEW_PATH)
+    assert count == 2
+
+    d1 = json.loads((tmp_path / "usage-data" / "session-meta" / "sess-001.json").read_text())
+    assert d1["project_path"] == NEW_PATH
+
+    d3 = json.loads((tmp_path / "usage-data" / "session-meta" / "sess-003.json").read_text())
+    assert d3["project_path"] == "/other/project"
+
+
+def test_update_usage_data_dry_run(tmp_path):
+    f = make_usage_data(tmp_path, OLD_PATH)
+    original = f.read_text()
+    count = update_usage_data(tmp_path, OLD_PATH, NEW_PATH, dry_run=True)
+    assert count == 1
+    assert f.read_text() == original
+
+
+def test_update_usage_data_no_match(tmp_path):
+    make_usage_data(tmp_path, "/other/project")
+    count = update_usage_data(tmp_path, OLD_PATH, NEW_PATH)
+    assert count == 0
+
+
+def test_update_usage_data_missing_dir(tmp_path):
+    count = update_usage_data(tmp_path, OLD_PATH, NEW_PATH)
+    assert count == 0
+
+
+def test_update_usage_data_prefix_match(tmp_path):
+    make_usage_data(tmp_path, OLD_PATH + "/subdir", "sess-sub")
+    count = update_usage_data(tmp_path, OLD_PATH, NEW_PATH)
+    assert count == 1
+    data = json.loads((tmp_path / "usage-data" / "session-meta" / "sess-sub.json").read_text())
+    assert data["project_path"] == NEW_PATH + "/subdir"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0] - 2026-03-05
+
+### Added
+- `usage-data/session-meta/*.json` files are now updated during `mv` and `remap` — fixes stale `project_path` in token usage and analytics data
+- Usage-data files are included in automatic backups and restored on rollback
+- Backup is now created even when the encoded project directory is not found (e.g., usage-data-only remaps)
+
 ## [1.0.0] - 2026-02-27
 
 ### Added
