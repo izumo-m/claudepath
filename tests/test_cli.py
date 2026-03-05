@@ -330,3 +330,36 @@ def test_cmd_list_shows_orphaned_status(tmp_path, monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "orphaned" in captured.out
     assert nonexistent_path in captured.out
+    assert "1 project (0 on disk, 1 orphaned)" in captured.out
+
+
+def test_cmd_list_summary_mixed(tmp_path, monkeypatch, capsys):
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir(parents=True)
+
+    existing_path = str(tmp_path)  # tmp_path exists on disk
+    nonexistent_path = str(tmp_path / "gone" / "project")
+
+    monkeypatch.setattr("claudepath.cli.find_claude_dir", lambda: claude_dir)
+    monkeypatch.setattr(
+        "claudepath.cli.list_projects",
+        lambda cd: [
+            {
+                "encoded_name": "enc-a",
+                "project_path": existing_path,
+                "session_count": 3,
+                "last_modified": "2026-01-01T00:00:00",
+            },
+            {
+                "encoded_name": "enc-b",
+                "project_path": nonexistent_path,
+                "session_count": 1,
+                "last_modified": "2026-01-02T00:00:00",
+            },
+        ],
+    )
+    monkeypatch.setenv("NO_COLOR", "1")
+
+    cmd_list([])
+    captured = capsys.readouterr()
+    assert "2 projects (1 on disk, 1 orphaned)" in captured.out

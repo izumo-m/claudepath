@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] - 2026-03-05
+
+### Improved
+- `claudepath list` now shows a summary line with project count at the end (e.g., "13 projects (12 on disk, 1 orphaned)")
+- `claudepath help` now lists `usage-data/session-meta/*.json` in the "WHAT IT UPDATES" section
+
 ## [1.1.0] - 2026-03-05
 
 ### Added

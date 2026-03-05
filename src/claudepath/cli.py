@@ -96,6 +96,7 @@ def print_help() -> None:
   - ~/.claude/projects/.../sessions-index.json
   - ~/.claude/projects/.../{{session}}.jsonl  (all sessions, recursively)
   - ~/.claude/history.jsonl
+  - ~/.claude/usage-data/session-meta/*.json
 
 {_c("BACKUP", BOLD)}
   By default, a backup is created before any changes in:
@@ -404,6 +405,15 @@ def cmd_list(args: list) -> None:
         print(f"  {_c(path, BOLD)}{status}")
         print(f"    {_c('sessions:', DIM)} {sessions}  {_c('last active:', DIM)} {modified}")
         print()
+
+    total = len(projects)
+    on_disk = sum(1 for p in projects if Path(p["project_path"]).exists())
+    orphaned = total - on_disk
+    parts = [f"{on_disk} on disk"]
+    if orphaned:
+        parts.append(f"{orphaned} orphaned")
+    label = f"{total} project{'s' if total != 1 else ''}"
+    print(_c(f"{label} ({', '.join(parts)})", DIM))
 
 
 def cmd_restore(args: list) -> None:
