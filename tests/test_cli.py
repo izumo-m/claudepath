@@ -198,45 +198,27 @@ def test_detect_install_method_pip(monkeypatch):
     assert detect_install_method() == "pip"
 
 
-def test_cmd_update_already_up_to_date(monkeypatch, capsys):
-    monkeypatch.setattr("claudepath.cli.check_latest_version", lambda: __version__)
+def test_cmd_update_disabled_for_fork(capsys):
+    """This patched fork disables PyPI self-update; it must not raise or upgrade."""
     cmd_update([])
     captured = capsys.readouterr()
-    assert "up to date" in captured.out.lower() or "Already" in captured.out
+    assert "disabled" in captured.out.lower()
+    assert "git" in captured.out.lower()
 
 
-def test_cmd_update_network_error(monkeypatch, capsys):
-    monkeypatch.setattr("claudepath.cli.check_latest_version", lambda: None)
-    with pytest.raises(SystemExit) as exc_info:
-        cmd_update([])
-    assert exc_info.value.code == 1
+def test_cmd_update_ignores_method_flags(capsys):
+    """Method flags are accepted but never trigger an upgrade in the fork."""
+    cmd_update(["--brew"])
+    cmd_update(["--pipx"])
+    cmd_update(["--pip"])
     captured = capsys.readouterr()
-    assert "internet" in captured.err.lower() or "updates" in captured.err.lower()
+    assert "disabled" in captured.out.lower()
 
 
-def test_cmd_update_override_flags():
-    """Verify --brew, --pipx, --pip are parsed without error."""
-    # These don't trigger update because we're not mocking check_latest_version
-    # We just test that the flag parsing doesn't raise unknown-option errors.
-    # We need to mock check_latest_version to avoid network calls.
-    # Instead, test that --brew doesn't cause "Unknown option" exit.
-    # The simplest test: parse the flags and check no SystemExit(1).
-    # cmd_update calls check_latest_version, so we must mock it.
-    import unittest.mock as mock
-
-    with mock.patch("claudepath.cli.check_latest_version", return_value=__version__):
-        # These should all succeed without raising SystemExit
-        cmd_update(["--brew"])
-        cmd_update(["--pipx"])
-        cmd_update(["--pip"])
-
-
-def test_cmd_update_older_version_on_pypi(monkeypatch, capsys):
-    """PyPI has an older version than local — should report up to date."""
-    monkeypatch.setattr("claudepath.cli.check_latest_version", lambda: "0.4.0")
-    cmd_update([])
+def test_cmd_update_help(capsys):
+    cmd_update(["--help"])
     captured = capsys.readouterr()
-    assert "up to date" in captured.out.lower() or "Already" in captured.out
+    assert "update" in captured.out.lower()
 
 
 # ─── Version comparison ──────────────────────────────────────────────────

@@ -6,7 +6,6 @@ import difflib
 import os
 import subprocess
 import sys
-import threading
 import urllib.error
 import urllib.request
 import json as _json
@@ -508,52 +507,12 @@ def cmd_update(args: list) -> None:
         _print_help_update()
         return
 
-    # Parse flags
-    method_override = None
-    for arg in args:
-        if arg == "--brew":
-            method_override = "brew"
-        elif arg == "--pipx":
-            method_override = "pipx"
-        elif arg == "--pip":
-            method_override = "pip"
-        elif arg.startswith("--"):
-            print_error(f"Unknown option: {arg}")
-            sys.exit(1)
-
+    # Patched fork: updating from PyPI would replace this build with the upstream
+    # release and silently drop the local patches, so self-update is disabled here.
+    # Update through the fork's git remote instead.
     print(f"  {_c('Current version:', BOLD)} {__version__}")
-    print(f"  Checking for updates...")
-
-    latest = check_latest_version()
-    if latest is None:
-        print_error("Could not check for updates. Check your internet connection.")
-        sys.exit(1)
-
-    if parse_version(latest) <= parse_version(__version__):
-        print(f"\n  {_c('Already up to date!', GREEN, BOLD)}")
-        return
-
-    method = method_override or detect_install_method()
-
-    print(f"  {_c('New version:', BOLD)} {latest}")
-    print(f"  {_c('Install method:', BOLD)} {method}")
-    print()
-
-    if method == "brew":
-        cmd = ["brew", "upgrade", "claudepath"]
-    elif method == "pipx":
-        cmd = ["pipx", "upgrade", "claudepath"]
-    else:
-        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "claudepath"]
-
-    print(f"  {_c('Running:', DIM)} {' '.join(cmd)}\n")
-    result = subprocess.run(cmd)
-
-    if result.returncode == 0:
-        print(f"\n  {_c(f'Updated to v{latest}!', GREEN, BOLD)}")
-    else:
-        print_error(f"Update failed (exit code {result.returncode})")
-        sys.exit(1)
+    print(f"\n  {_c('This is a patched fork — self-update is disabled.', YELLOW, BOLD)}")
+    print(f"  {_c('Update via git:', DIM)} git switch main && git pull")
 
 
 # ─── Version Check ─────────────────────────────────────────────────────────
@@ -610,14 +569,6 @@ def main() -> None:
         cmd_restore(rest)
         return
 
-    # Check for updates in background — does not block command execution
-    latest_version: list = []
-    checker = threading.Thread(
-        target=lambda: latest_version.append(check_latest_version()),
-        daemon=True,
-    )
-    checker.start()
-
     if command == "mv":
         cmd_mv(rest)
     elif command == "remap":
@@ -632,12 +583,6 @@ def main() -> None:
             print_error(f"Unknown command: '{command}'")
         print("Run 'claudepath help' for usage.", file=sys.stderr)
         sys.exit(1)
-
-    # Wait up to 2s for the version check, then print notice if outdated
-    checker.join(timeout=2)
-    if (latest_version and latest_version[0]
-            and parse_version(latest_version[0]) > parse_version(__version__)):
-        _print_update_notice(latest_version[0])
 
 
 if __name__ == "__main__":
