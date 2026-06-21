@@ -62,7 +62,7 @@ def print_help() -> None:
   {_c("mv", BOLD)} <old-path> <new-path>      Move project directory and update all Claude references
   {_c("remap", BOLD)} <old-path> <new-path>   Update Claude references only (directory already moved)
   {_c("list", BOLD)}                          List all projects tracked by Claude Code
-  {_c("update", BOLD)}                        Update claudepath to the latest version
+  {_c("update", BOLD)}                        Show update info (self-update disabled in this fork)
   {_c("restore", BOLD)}                       Restore from a previous backup
   {_c("help", BOLD)}                          Show this help message
 
@@ -165,17 +165,16 @@ def _print_help_list() -> None:
 
 def _print_help_update() -> None:
     print(f"""\
-{_c("claudepath update", BOLD)} — Update claudepath to the latest version
+{_c("claudepath update", BOLD)} — Self-update is disabled in this patched fork
 
 {_c("USAGE", BOLD)}
-  claudepath update [options]
+  claudepath update
 
-{_c("OPTIONS", BOLD)}
-  --brew           Force update via Homebrew
-  --pipx           Force update via pipx
-  --pip            Force update via pip
+This is an unofficial patched fork. Updating from PyPI would replace it with the
+upstream build and silently drop the local patches, so self-update is disabled.
 
-Auto-detects the install method if no override is given.
+{_c("UPDATE VIA GIT INSTEAD", BOLD)}
+  git switch main && git pull
 """)
 
 

@@ -81,19 +81,13 @@ claudepath list
 
 ### Update claudepath
 
-Update to the latest version — auto-detects whether you installed via Homebrew or pipx:
+Self-update is **disabled** in this fork — running it from PyPI would overwrite the fork with the upstream build. Update from git instead:
 
 ```bash
-claudepath update
+git switch main && git pull
 ```
 
-You can also force a specific method:
-
-```bash
-claudepath update --brew
-claudepath update --pipx
-claudepath update --pip
-```
+Running `claudepath update` just prints this reminder.
 
 ### Restore from backup
 
