@@ -9,6 +9,21 @@
 
 Move or rename [Claude Code](https://claude.ai/claude-code) projects without losing session history, memory, and context.
 
+> [!NOTE]
+> **Unofficial patched fork** of [`Mahiler1909/claudepath`](https://github.com/Mahiler1909/claudepath), maintained for personal use by [@izumo-m](https://github.com/izumo-m). Not affiliated with or endorsed by the upstream author. The badges and the PyPI/Homebrew install commands below refer to the **upstream** package.
+>
+> **What this fork changes**
+> - Integrates upstream open PRs ahead of merge: [#3](https://github.com/Mahiler1909/claudepath/pull/3) (preserve file mtime) and [#4](https://github.com/Mahiler1909/claudepath/pull/4) (encoder fix for [#2](https://github.com/Mahiler1909/claudepath/issues/2)).
+> - Disables the PyPI self-update check and `claudepath update` (running it would overwrite this fork with the upstream build).
+> - Version labelled `1.1.1+izumo` so it is distinguishable from stock releases.
+>
+> **Install this fork from source** (not from PyPI):
+> ```bash
+> git clone https://github.com/izumo-m/claudepath.git
+> cd claudepath
+> pipx install .   # or: pip install .
+> ```
+
 ## The Problem
 
 When you move or rename a project directory, Claude Code loses all your session history because sessions are keyed to the absolute path of your project. You end up with orphaned data in `~/.claude/projects/` and a fresh start.
