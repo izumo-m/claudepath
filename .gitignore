@@ -32,3 +32,6 @@ coverage.xml
 
 # macOS
 .DS_Store
+
+# Local / personal — not committed (CLAUDE.local.md, .claude/settings.local.json, etc.)
+*.local.*
